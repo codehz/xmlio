@@ -30,10 +30,21 @@ impl SimpleXmlnsHandler, XmlnsHandler:
 proc `[]=`*(self: ref SimpleXmlnsHandler, name: string, handler: FactoryFunc) =
   self.factory[name] = handler
 
-proc `[]=`*(self: ref SimpleXmlnsHandler, name: string, desc: typedesc) =
+proc registerType*(self: ref SimpleXmlnsHandler, name: string, desc: typedesc) =
   self.factory[name] = proc (proxy: TypedProxy): ref XmlElementHandler =
     if proxy.verify(desc):
-      proxy.get(desc)
+      let tmp = new desc
+      proxy.assign tmp
+      tmp
+    else:
+      raise newException(ValueError, "invalid type for element")
+
+proc registerType*(self: ref SimpleXmlnsHandler, name: string, desc: typedesc, ifce: typedesc) =
+  self.factory[name] = proc (proxy: TypedProxy): ref XmlElementHandler =
+    if proxy.verify(ifce):
+      let tmp = new desc
+      assign[ifce](proxy, tmp)
+      tmp
     else:
       raise newException(ValueError, "invalid type for element")
 

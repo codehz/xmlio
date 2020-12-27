@@ -10,6 +10,7 @@ trait XmlAttributeHandler:
     raise newException(ValueError, "unsupported")
   method addText*(self: ref XmlAttributeHandler, text: string) =
     raise newException(ValueError, "unsupported")
+  method addWhitespace*(self: ref XmlAttributeHandler, space: string) = discard
   method addEntity*(self: ref XmlAttributeHandler, entity: string) =
     raise newException(ValueError, "unsupported")
   method addSpecial*(self: ref XmlAttributeHandler, special: string) =

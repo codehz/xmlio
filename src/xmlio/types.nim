@@ -48,9 +48,9 @@ forall do (T: typed):
       self.cache.add entityToUtf8 entity
     method verify*(self: ref SomeIntegerHandler[T]) =
       when T is SomeSignedInt:
-        self.proxy[] = T parseInt(self.cache)
+        self.proxy[] = T parseInt(self.cache.strip())
       elif T is SomeUnsignedInt:
-        self.proxy[] = T parseUInt(self.cache)
+        self.proxy[] = T parseUInt(self.cache.strip())
       else:
         discard
 
@@ -66,8 +66,6 @@ forall do (T: typed):
     method getChildProxy*(self: ref SeqHandler[T]): TypedProxy =
       let len = self.proxy[].len
       self.proxy[].setLen(len + 1)
-      when T is ref:
-        new self.proxy[][len]
       createProxy addr self.proxy[][len]
     method verify*(self: ref SeqHandler[T]) =
       discard
@@ -75,3 +73,21 @@ forall do (T: typed):
 proc createAttributeHandlerConcrete*[T](val: var seq[T]): ref SeqHandler[T] =
   new result
   result.proxy = addr val
+
+type ProxyHandler* = object of RootObj
+  used: bool
+  proxy: TypedProxy
+
+impl ProxyHandler, XmlAttributeHandler:
+  method getChildProxy*(self: ref ProxyHandler): TypedProxy =
+    if self.used:
+      raise newException(ValueError, "already used")
+    self.used = true
+    return self.proxy
+  method verify*(self: ref ProxyHandler) =
+    if not self.used:
+      raise newException(ValueError, "not used")
+
+proc createAttributeHandlerConcrete*[T: ref](val: var T): ref ProxyHandler =
+  new result
+  result.proxy = createProxy val

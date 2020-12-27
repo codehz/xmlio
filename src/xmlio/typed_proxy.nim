@@ -25,3 +25,10 @@ proc get*(proxy: TypedProxy, T: typedesc): T =
   if not proxy.verify T:
     raise newException(ValueError, "typeid not matched")
   cast[ptr T](proxy.rawptr)[]
+
+template getOrPut*[T: ref](proxy: TypedProxy, value: T): T =
+  if not proxy.verify typeof value:
+    raise newException(ValueError, "typeid not matched")
+  if cast[ptr typeof value](proxy.rawptr)[] == nil:
+    cast[ptr typeof value](proxy.rawptr)[] = value
+  cast[ptr typeof value](proxy.rawptr)[]

@@ -1,4 +1,4 @@
-import parsexml, streams, options, tables, strscans
+import parsexml, streams, options, tables, strscans, critbits
 
 import traits, typeid, typed_proxy
 
@@ -6,8 +6,29 @@ export registerTypeId
 
 when defined(debug_parsexml):
   const decho = echo
+  proc dumpParser(parser: var XmlParser, stage: string = "DUMP") =
+    let kind = parser.kind
+    var buffer = stage & " " & ($kind).substr(3)
+    case kind:
+    of xmlWhitespace: discard
+    of xmlCharData, xmlComment, xmlCData, xmlSpecial:
+      buffer = buffer & "=" & parser.charData
+    of xmlElementStart, xmlElementEnd, xmlElementOpen:
+      buffer = buffer & "=" & parser.elementName
+    of xmlEntity:
+      buffer = buffer & "=" & parser.entityName
+    of xmlAttribute:
+      buffer = buffer & "(" & parser.attrKey & "=" & parser.attrValue & ")"
+    of xmlPI:
+      buffer = buffer & "(" & parser.piName & "=" & parser.piRest & ")"
+    of xmlError:
+      buffer = buffer & "=" & parser.errorMsg
+    else: discard
+    echo buffer
+
 else:
   template decho(all: varargs[untyped]) = discard
+  template dumpParser(all: varargs[untyped]) = discard
 
 type XmlError* = object of ValueError
   filename: string
@@ -94,98 +115,46 @@ proc resolveNs(ctx: var XmlContext, name: string): ref XmlnsHandler =
   else:
     ctx.parent[].resolveNs(name)
 
-proc process(ctx: var XmlContext, name: string, target: ref XmlElementHandler)
-
-proc scanAttributes(ctx: var XmlContext, attrs: var Table[string, string]) =
+proc scanAttributes(ctx: var XmlContext): seq[(string, string)] =
   var root = ctx.rootContext
   template parser(): var XmlParser = root.parser
   while true:
-    decho "SCAN ", parser.kind
     case parser.kind:
+    of xmlElementStart: return @[]
+    of xmlElementOpen:
+      parser.next()
+      break
+    of xmlWhitespace: parser.next()
+    else: raise newException(ValueError, "invalid xml node: " & $parser.kind)
+  while true:
+    dumpParser parser, "SCAN"
+    case parser.kind:
+    of xmlWhitespace: parser.next()
     of xmlAttribute:
       let atn = parseAttributeName parser.attrKey
       case atn.kind:
       of ak_normal:
-        attrs[atn.name] = parser.attrValue
+        result.add (atn.name, parser.attrValue)
       of ak_xmlns:
         assert ctx.ischild
         ctx.nsmap[atn.ns] = parser.attrValue
       parser.next()
     of xmlElementClose:
-      parser.next()
       return
     else:
       raise newException(ValueError, "invalid xml node: " & $parser.kind)
 
-proc extract(ctx: var XmlContext, proxy: TypedProxy) =
-  var root = ctx.rootContext
-  template parser(): var XmlParser = root.parser
-  template handler(): ref XmlnsRegistry = root.handler
-  var processed = false
-  var textmode = false
-  while true:
-    decho "EXTR ", parser.kind, "::", cast[ByteAddress](proxy.rawptr)
-    case parser.kind:
-    of xmlPI:
-      handler.resolveProcessInstruction(parser.piName, parser.piRest)
-      parser.next()
-    of xmlElementStart:
-      if processed or textmode:
-        raise newException(ValueError, "Invalid xml")
-      let ele = parseElementName parser.elementName
-      if ele.attr.isSome():
-        raise newException(ValueError, "Invalid element: " & parser.elementName)
-      let nshandler = ctx.resolveNs ele.ns
-      let elehandler = nshandler.createElement(ele.name, proxy)
-      var childctx = ctx.newChildContext()
-      parser.next()
-      childctx.process(ele.name, elehandler)
-      if parser.kind != xmlElementEnd:
-        raise newException(ValueError, "invalid xml")
-      parser.next()
-      processed = true
-    of xmlElementOpen:
-      if processed or textmode:
-        raise newException(ValueError, "Invalid xml")
-      let ele = parseElementName parser.elementName
-      if ele.attr.isSome():
-        raise newException(ValueError, "Invalid element: " & parser.elementName)
-      var childctx = ctx.newChildContext()
-      var attrcache = initTable[string, string]()
-      parser.next()
-      childctx.scanAttributes(attrcache)
-      decho "FIXX ", parser.kind
-      let nshandler = childctx.resolveNs ele.ns
-      let elehandler = nshandler.createElement(ele.name, proxy)
-      for k, v in attrcache:
-        elehandler.setAttributeString(k, v)
-      if parser.kind == xmlElementEnd:
-        processed = true
-        return
-      childctx.process(ele.name, elehandler)
-      if parser.kind != xmlElementEnd:
-        raise newException(ValueError, "invalid xml")
-      parser.next()
-      processed = true
-    of xmlElementEnd:
-      if not processed:
-        raise newException(ValueError, "Invalid xml")
-      return
-    of xmlEof:
-      if not processed:
-        raise newException(ValueError, "Unexpected eof")
-      return
-    else:
-      raise newException(ValueError, "invalid xml node: " & $parser.kind)
-    discard
+proc extract(ctx: var XmlContext, target: TypedProxy)
 
-proc process(ctx: var XmlContext, target: ref XmlAttributeHandler) =
+proc processElementAttribute(ctx: var XmlContext, target: ref XmlAttributeHandler) =
   var root = ctx.rootContext
   template parser(): var XmlParser = root.parser
   template handler(): ref XmlnsRegistry = root.handler
+  template unexpected() = raise newException(ValueError, "unexpected xml token: " & $parser.kind)
   while true:
-    decho "ATTR ", parser.kind
-    case parser.kind:
+    dumpParser parser, "ATTR"
+    let kind = parser.kind
+    case kind:
     of xmlPI:
       handler.resolveProcessInstruction(parser.piName, parser.piRest)
       parser.next()
@@ -193,87 +162,122 @@ proc process(ctx: var XmlContext, target: ref XmlAttributeHandler) =
       target.verify()
       return
     of xmlElementStart, xmlElementOpen:
-      let eln = parseElementName parser.elementName
-      if eln.attr.isSome():
-        raise newException(ValueError, "invalid attribute " & parser.elementName)
-      else:
-        let proxy = target.getChildProxy()
-        ctx.extract proxy
-        if parser.kind != xmlElementEnd:
-          raise newException(ValueError, "invalid xml")
-        parser.next()
+      let proxy = target.getChildProxy()
+      ctx.extract(proxy)
     of xmlCharData, xmlCData:
-      target.addText parser.charData
+      target.addText(parser.charData)
       parser.next()
-    of xmlEntity:
-      target.addEntity parser.charData
+    of xmlWhitespace:
+      target.addWhitespace(parser.charData)
       parser.next()
     of xmlSpecial:
-      target.addSpecial parser.charData
+      target.addSpecial(parser.charData)
       parser.next()
-    else:
-      raise newException(ValueError, "invalid xml node when process attribute: " & $parser.kind)
+    of xmlEntity:
+      target.addEntity(parser.entityName)
+      parser.next()
+    else: unexpected()
 
-proc process(ctx: var XmlContext, name: string, target: ref XmlElementHandler) =
+proc processElement(ctx: var XmlContext, target: ref XmlElementHandler, origname: ElementName, attrs: sink seq[(string, string)] = @[]) =
+  var attrset: CritBitTree[void]
+  template acquireAttr(key: string) =
+    if key in attrset:
+      raise newException(ValueError, "duplicated attribute: " & key)
+    attrset.incl key
+  for (k, v) in attrs:
+    acquireAttr k
+    target.setAttributeString(k, v)
   var root = ctx.rootContext
-  var rawchildhandler: ref XmlAttributeHandler
   template parser(): var XmlParser = root.parser
   template handler(): ref XmlnsRegistry = root.handler
-  template childhandler(): ref XmlAttributeHandler =
-    if rawchildhandler == nil:
-      rawchildhandler = target.getAttributeHandler("children")
-    rawchildhandler
+  template childrenMode() =
+    acquireAttr "children"
+    let childhandler = target.getAttributeHandler("children")
+    ctx.processElementAttribute(childhandler)
+    if parser.kind != xmlElementEnd: unexpected()
+    return
+  template unexpected() = raise newException(ValueError, "unexpected xml token: " & $parser.kind)
   while true:
-    decho "ELEM ", parser.kind
-    case parser.kind:
+    dumpParser parser, "ELEM"
+    let kind = parser.kind
+    case kind:
     of xmlPI:
       handler.resolveProcessInstruction(parser.piName, parser.piRest)
       parser.next()
     of xmlElementEnd:
-      if rawchildhandler != nil:
-        rawchildhandler.verify()
       target.verify()
       return
-    of xmlElementStart:
-      let eln = parseElementName parser.elementName
-      if eln.attr.isSome():
-        let attr = eln.attr.get()
-        if eln.name != name or eln.ns != "":
-          raise newException(ValueError, "invalid attribute " & parser.elementName)
-        parser.next()
-        ctx.process(target.getAttributeHandler(attr))
-      else:
-        let proxy = childhandler.getChildProxy()
-        ctx.extract proxy
-        if parser.kind != xmlElementEnd:
-          raise newException(ValueError, "invalid xml")
-        parser.next()
-    of xmlElementOpen:
-      let eln = parseElementName parser.elementName
-      if eln.attr.isSome():
-        raise newException(ValueError, "invalid attribute " & parser.elementName)
-      else:
-        let proxy = childhandler.getChildProxy()
-        ctx.extract proxy
-        if parser.kind != xmlElementEnd:
-          raise newException(ValueError, "invalid xml")
-        parser.next()
-    of xmlCharData, xmlCData:
-      childhandler.addText parser.charData
+    of xmlElementStart, xmlElementOpen:
+      let startname = parser.elementName;
+      let elename = parseElementName(startname)
+      if elename.attr.isNone(): childrenMode()
+      var child = ctx.newChildContext()
+      if elename.name != origname.name:
+        raise newException(ValueError, "invalid element attribute: element name mismatched")
+      let attrs = child.scanAttributes()
+      if attrs.len != 0:
+        raise newException(ValueError, "invalid element attribute: custom attribute in attribute is not allowed")
+      if elename.ns != "" and child.resolveNs(elename.ns) != ctx.resolveNs(origname.ns):
+        raise newException(ValueError, "invalid element attribute: xmlns mismatched")
+      let attrhandler = target.getAttributeHandler(elename.attr.get())
       parser.next()
-    of xmlEntity:
-      childhandler.addEntity parser.charData
+      child.processElementAttribute(attrhandler)
+      if parser.kind != xmlElementEnd: unexpected()
+      if parser.elementName != startname:
+        raise newException(ValueError, "invalid element attribute: end tag not matched")
       parser.next()
-    of xmlSpecial:
-      childhandler.addSpecial parser.charData
-      parser.next()
-    else:
-      raise newException(ValueError, "invalid xml node when process element: " & $parser.kind)
+    of xmlCharData, xmlSpecial, xmlWhitespace, xmlEntity, xmlCData:
+      childrenMode()
+    else: unexpected()
 
-proc extract*[T](ctx: var XmlContext, target: var T) =
-  let proxy = createProxy(target)
+proc extract(ctx: var XmlContext, target: TypedProxy) =
+  var root = ctx.rootContext
+  template parser(): var XmlParser = root.parser
+  template handler(): ref XmlnsRegistry = root.handler
+  template unexpected() = raise newException(ValueError, "unexpected xml token: " & $parser.kind)
+  var processed = none string
+  while true:
+    dumpParser parser, "EXTR"
+    let kind = parser.kind
+    case kind:
+    of xmlWhitespace: parser.next()
+    of xmlPI:
+      handler.resolveProcessInstruction(parser.piName, parser.piRest)
+      parser.next()
+    of xmlElementStart, xmlElementOpen:
+      if processed.isSome(): unexpected()
+      processed = some parser.elementName
+      var child = ctx.newChildContext()
+      let elename = parseElementName(parser.elementName)
+      if elename.attr.isSome():
+        raise newException(ValueError, "unexpected attribute style element: " & parser.elementName)
+      let attrs = child.scanAttributes()
+      let ns = child.resolveNs(elename.ns)
+      let element = ns.createElement(elename.name, target)
+      parser.next()
+      child.processElement(element, elename, attrs)
+    of xmlElementEnd:
+      if processed.isNone(): unexpected()
+      if processed.get() != parser.elementName: unexpected()
+      parser.next()
+      return
+    of xmlEof:
+      raise newException(ValueError, "unexpected EOF")
+    else: unexpected()
+
+proc extract[T: ref](ctx: var XmlContext, desc: typedesc[T]): T =
+  let proxy = createProxy(result)
   try:
     ctx.extract(proxy)
+    var root = ctx.rootContext
+    template parser(): var XmlParser = root.parser
+    template unexpected() = raise newException(ValueError, "unexpected xml token: " & $parser.kind)
+    while true:
+      dumpParser ctx.parser, "END"
+      case parser.kind:
+      of xmlEof: return
+      of xmlComment, xmlWhitespace: discard
+      else: unexpected()
   except CatchableError:
     decho getCurrentException().getStackTrace()
     let xmle = newException(XmlError, ctx.parser.errorMsg(getCurrentExceptionMsg()), getCurrentException())
@@ -282,7 +286,9 @@ proc extract*[T](ctx: var XmlContext, target: var T) =
     xmle.column = ctx.parser.getColumn()
     raise xmle
 
-proc newXmlContext*(handler: ref XmlnsRegistry, input: Stream, filename: string): XmlContext =
-  result.parser.open(input, filename)
-  result.handler = handler
-  result.parser.next()
+proc readXml*[T: ref](handler: ref XmlnsRegistry, input: Stream, filename: string, desc: typedesc[T]): T =
+  var ctx: XmlContext
+  ctx.parser.open(input, filename, {reportWhitespace, allowUnquotedAttribs, allowEmptyAttribs})
+  ctx.handler = handler
+  ctx.parser.next()
+  ctx.extract(desc)

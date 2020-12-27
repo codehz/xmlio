@@ -25,7 +25,9 @@ impl SimpleNsHandler, XmlnsHandler:
     case name:
     of "root":
       if proxy.verify(ref RootElementHandler):
-        proxy.get(ref RootElementHandler)
+        let tmp = new RootElementHandler
+        proxy.assign tmp
+        tmp
       else:
         raise newException(ValueError, "invalid type")
     else:
@@ -40,21 +42,15 @@ impl SimpleRegistry, XmlnsRegistry:
 suite "simple":
   test "simple case":
     var strs = newStringStream("""<root xmlns="test" name="test" />""")
-    var ctx = newXmlContext(new SimpleRegistry, strs, "input")
-    var root = new RootElementHandler
-    ctx.extract root
+    let root = readXml(new SimpleRegistry, strs, "input", ref RootElementHandler)
     check root.name == "test"
 
   test "alternative":
     var strs = newStringStream("""<root xmlns="test"><root.name>test2</root.name></root>""")
-    var ctx = newXmlContext(new SimpleRegistry, strs, "input")
-    var root = new RootElementHandler
-    ctx.extract root
+    let root = readXml(new SimpleRegistry, strs, "input", ref RootElementHandler)
     check root.name == "test2"
 
   test "html entity":
     var strs = newStringStream("""<root xmlns="test"><root.name>&lt;script&gt;</root.name></root>""")
-    var ctx = newXmlContext(new SimpleRegistry, strs, "input")
-    var root = new RootElementHandler
-    ctx.extract root
+    let root = readXml(new SimpleRegistry, strs, "input", ref RootElementHandler)
     check root.name == "<script>"
