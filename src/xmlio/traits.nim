@@ -3,7 +3,7 @@ import macros
 import vtable
 import vtable/utils
 
-import typed_proxy
+import typed_proxy, strmod
 
 trait XmlAttributeHandler:
   method getChildProxy*(self: ref XmlAttributeHandler): TypedProxy =
@@ -52,7 +52,7 @@ macro generateXmlElementHandler*(T: typed, xid: static string, verify: untyped) 
       newDotExpr(self_id, name)
     )
     case_stmt.add nnkOfBranch.newTree(
-      newLit namestr,
+      newLit casemod namestr,
       of_body
     )
   case_stmt.add nnkElse.newTree quote do:
