@@ -61,7 +61,7 @@ macro generateXmlElementHandler*(T: typed, xid: static string, verify: untyped) 
   let verify_id = genSym(nskProc, "verify")
   let impl_id = genSym(nskVar, "impl")
   result = quote do:
-    registerTypeId(ref `T`, "ef50487c-c4ae-440b-a811-6cbe599c2d2d")
+    registerTypeId(ref `T`, `xid`)
     proc `getAttributeHandler_id`(self: ref RootObj, `key_id`: string): ref XmlAttributeHandler =
       let `self_id` {.used.} = cast[ref `T`](self)
       `case_stmt`
