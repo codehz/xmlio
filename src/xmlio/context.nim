@@ -2,8 +2,6 @@ import parsexml, streams, options, tables, strscans, critbits
 
 import traits, typeid, typed_proxy
 
-export registerTypeId
-
 when defined(debug_parsexml):
   const decho = echo
   proc dumpParser(parser: var XmlParser, stage: string = "DUMP") =
@@ -33,7 +31,8 @@ else:
 type XmlError* = object of ValueError
   filename: string
   line, column: int
-type XmlContext* = object
+
+type XmlContext = object
   case ischild: bool
   of false:
     parser: XmlParser
@@ -287,6 +286,7 @@ proc extract[T: ref](ctx: var XmlContext, desc: typedesc[T]): T =
     raise xmle
 
 proc readXml*[T: ref](handler: ref XmlnsRegistry, input: Stream, filename: string, desc: typedesc[T]): T =
+  ## read type T from xml
   var ctx: XmlContext
   ctx.parser.open(input, filename, {reportWhitespace, allowUnquotedAttribs, allowEmptyAttribs})
   ctx.handler = handler
