@@ -1,4 +1,4 @@
-import unittest, streams
+import unittest
 
 import xmlio, vtable
 import xmlio/[types, typeid_default]
@@ -41,16 +41,15 @@ impl SimpleRegistry, XmlnsRegistry:
 
 suite "simple":
   test "simple case":
-    var strs = newStringStream("""<root xmlns="test" name="test" />""")
-    let root = readXml(new SimpleRegistry, strs, "input", ref RootElementHandler)
+    let root = readXml(new SimpleRegistry, """<root xmlns="test" name="test" />""", ref RootElementHandler)
     check root.name == "test"
 
   test "alternative":
-    var strs = newStringStream("""<root xmlns="test"><root.name>test2</root.name></root>""")
-    let root = readXml(new SimpleRegistry, strs, "input", ref RootElementHandler)
+    const xml = """<root xmlns="test"><root.name>test2</root.name></root>"""
+    let root = readXml(new SimpleRegistry, xml, ref RootElementHandler)
     check root.name == "test2"
 
   test "html entity":
-    var strs = newStringStream("""<root xmlns="test"><root.name>&lt;script&gt;</root.name></root>""")
-    let root = readXml(new SimpleRegistry, strs, "input", ref RootElementHandler)
+    const xml = """<root xmlns="test"><root.name>&lt;script&gt;</root.name></root>"""
+    let root = readXml(new SimpleRegistry, xml, ref RootElementHandler)
     check root.name == "<script>"

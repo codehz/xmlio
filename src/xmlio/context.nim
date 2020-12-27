@@ -292,3 +292,7 @@ proc readXml*[T: ref](handler: ref XmlnsRegistry, input: Stream, filename: strin
   ctx.handler = handler
   ctx.parser.next()
   ctx.extract(desc)
+
+proc readXml*[T: ref](handler: ref XmlnsRegistry, input: string, desc: typedesc[T], filename: string = "<input>"): T =
+  var streams = newStringStream input
+  readXml[T](handler, streams, filename, desc)

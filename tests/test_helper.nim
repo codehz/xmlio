@@ -1,4 +1,4 @@
-import unittest, streams
+import unittest
 
 import xmlio
 import xmlio/typeid_default
@@ -26,12 +26,12 @@ registry["std"] = rootns
 
 suite "helper":
   test "simple":
-    var strs = newStringStream("""<root xmlns="std" name="test" />""")
-    let root = readXml(registry, strs, "input", ref MyRoot)
+    const xml = """<root xmlns="std" name="test" />"""
+    let root = readXml(registry, xml, ref MyRoot)
     check root.name == "test"
   test "has children":
-    var strs = newStringStream("""<root xmlns="std" name="test"> <data value="5" /> <data value="6" /> </root>""")
-    let root = readXml(registry, strs, "input", ref MyRoot)
+    const xml = """<root xmlns="std" name="test"> <data value="5" /> <data value="6" /> </root>"""
+    let root = readXml(registry, xml, ref MyRoot)
     check root.name == "test"
     check root.children.len == 2
     check root.children[0].value == 5

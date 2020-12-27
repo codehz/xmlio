@@ -68,8 +68,7 @@ registry["custom"] = customns
 
 suite "helper":
   test "empty":
-    var strs = newStringStream("""<root xmlns="std" version="1" />""")
-    var root = readXml(registry, strs, "input", ref RootDocument)
+    var root = readXml(registry, """<root xmlns="std" version="1" />""", ref RootDocument)
     check root.version == 1
     check root.children.len == 0
 
