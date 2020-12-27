@@ -36,6 +36,22 @@ proc createAttributeHandlerConcrete*(str: var string): ref StringHandler =
   new result
   result[].proxy = createProxy str
 
+template buildTypedAttributeHandler*(T: static typedesc, body: untyped) =
+  type TypedHandler* {.gensym.} = object of RootObj
+    cache: string
+    proxy: ptr T
+  impl TypedHandler, XmlAttributeHandler:
+    method addText*(self: ref TypedHandler, text: string) =
+      self.cache.add text
+    method addEntity*(self: ref TypedHandler, entity: string) =
+      self.cache.add entityToUtf8 entity
+    method verify*(self: ref TypedHandler) {.nimcall.} =
+      body
+
+  proc createAttributeHandlerConcrete*(val: var T): ref TypedHandler =
+    new result
+    result[].proxy = addr val
+
 type SomeIntegerHandler*[T] = object of RootObj
   cache: string
   proxy: ptr T
