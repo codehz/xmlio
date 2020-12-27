@@ -10,10 +10,10 @@ type MyRoot = object of RootObj
   name: string
   children: seq[ref MyData]
 
-generateXmlELementHandler MyData, "595b110e-50cf-484a-b06e-78291edf4aab":
+generateXmlElementHandler MyData, "595b110e-50cf-484a-b06e-78291edf4aab":
   discard
 
-generateXmlELementHandler MyRoot, "827b04b8-0925-4897-9ca0-959601afc8e8":
+generateXmlElementHandler MyRoot, "827b04b8-0925-4897-9ca0-959601afc8e8":
   if self.name == "": raise newException(ValueError, "name is empty")
 
 var registry = newSimpleRegistry()

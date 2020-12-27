@@ -35,7 +35,7 @@ trait XmlnsRegistry:
 
 export XmlAttributeHandler, XmlElementHandler, XmlnsHandler, XmlnsRegistry
 
-macro generateXmlELementHandler*(T: typed, xid: static string, verify: untyped) =
+macro generateXmlElementHandler*(T: typed, xid: static string, verify: untyped) =
   let impl = T.resolveTypeDesc().getTypeImpl()
   impl.expectKind nnkObjectTy
   let list = impl[2]
@@ -62,10 +62,10 @@ macro generateXmlELementHandler*(T: typed, xid: static string, verify: untyped) 
   result = quote do:
     registerTypeId(ref `T`, "ef50487c-c4ae-440b-a811-6cbe599c2d2d")
     proc `getAttributeHandler_id`(self: ref RootObj, `key_id`: string): ref XmlAttributeHandler =
-      let `self_id` = cast[ref `T`](self)
+      let `self_id` {.used.} = cast[ref `T`](self)
       `case_stmt`
     proc `verify_id`(self: ref RootObj) =
-      let `self_id` = cast[ref `T`](self)
+      let `self_id` {.used.} = cast[ref `T`](self)
       `verify`
     var `impl_id` = vtXmlElementHandler(getAttributeHandler: some `getAttributeHandler_id`, verify: `verify_id`)
     converter toXmlElementHandler(self: ref `T`): ref XmlElementHandler {.used.} =
