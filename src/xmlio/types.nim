@@ -45,7 +45,8 @@ template buildTypedAttributeHandler*(T: static typedesc, body: untyped) =
       self.cache.add text
     method addEntity*(self: ref TypedHandler, entity: string) =
       self.cache.add entityToUtf8 entity
-    method verify*(self: ref TypedHandler) {.nimcall.} =
+    method verify*(`self-generated`: ref TypedHandler) {.nimcall.} =
+      let self {.inject.} = `self-generated`
       body
 
   proc createAttributeHandlerConcrete*(val: var T): ref TypedHandler =
@@ -86,7 +87,7 @@ forall do (T: typed):
     method verify*(self: ref SeqHandler[T]) =
       discard
 
-proc createAttributeHandlerConcrete*[T](val: var seq[T]): ref SeqHandler[T] =
+proc createAttributeHandlerConcrete*[T: ref](val: var seq[T]): ref SeqHandler[T] =
   new result
   result.proxy = addr val
 
