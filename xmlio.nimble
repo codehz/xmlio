@@ -2,7 +2,7 @@
 
 version       = "0.1.0"
 author        = "CodeHz"
-description   = "XML serialize/deserialize"
+description   = "Nim xml mapper"
 license       = "LGPL-3.0"
 srcDir        = "src"
 
