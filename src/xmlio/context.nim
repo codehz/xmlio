@@ -163,12 +163,20 @@ proc processElement(ctx: var XmlContext, target: ref XmlElementHandler, origname
   var root = ctx.rootContext
   template parser(): var XmlParser = root.parser
   template handler(): ref XmlnsRegistry = root.handler
-  template childrenMode() =
-    acquireAttr "children"
-    let childhandler = target.getAttributeHandler("children")
-    ctx.processElementAttribute(childhandler)
-    if parser.kind != xmlElementEnd: unexpected()
-    return
+  template childrenMode(safemode: static bool = false) =
+    let childrenattr = target.getChildrenAttribute()
+    if childrenattr.isNone():
+      when safemode:
+        parser.next()
+      else:
+        raise newException(ValueError, "invalid children element")
+    else:
+      let attr = childrenattr.get()
+      acquireAttr attr
+      let childhandler = target.getAttributeHandler(attr)
+      ctx.processElementAttribute(childhandler)
+      if parser.kind != xmlElementEnd: unexpected()
+      return
   template unexpected() = raise newException(ValueError, "unexpected xml token: " & $parser.kind)
   while true:
     dumpParser parser, "ELEM"
@@ -199,7 +207,9 @@ proc processElement(ctx: var XmlContext, target: ref XmlElementHandler, origname
       if parser.elementName != startname:
         raise newException(ValueError, "invalid element attribute: end tag not matched")
       parser.next()
-    of xmlCharData, xmlSpecial, xmlWhitespace, xmlEntity, xmlCData:
+    of xmlWhitespace:
+      childrenMode(true)
+    of xmlCharData, xmlSpecial, xmlEntity, xmlCData:
       childrenMode()
     else: unexpected()
 
