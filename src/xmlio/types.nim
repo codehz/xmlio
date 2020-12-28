@@ -36,7 +36,8 @@ proc createAttributeHandlerConcrete*(str: var string): ref StringHandler =
   new result
   result[].proxy = createProxy str
 
-template buildTypedAttributeHandler*(T: static typedesc, body: untyped) =
+template buildTypedAttributeHandler*(body: untyped) =
+  type T {.gensym.} = typeof(body(""))
   type TypedHandler* {.gensym.} = object of RootObj
     cache: string
     proxy: ptr T
