@@ -189,7 +189,7 @@ proc processElement(ctx: var XmlContext, target: ref XmlElementHandler, origname
       target.verify()
       return
     of xmlElementStart, xmlElementOpen:
-      let startname = parser.elementName;
+      let startname = parser.elementName & "" # force copy string
       let elename = parseElementName(startname)
       if elename.attr.isNone(): childrenMode()
       var child = ctx.newChildContext()
