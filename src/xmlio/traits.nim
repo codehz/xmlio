@@ -62,7 +62,7 @@ proc parseTypeIdent(def: NimNode): TypeIdent =
   result.tid = newEmptyNode()
   result.children = newEmptyNode()
   for pg in def[1]:
-    pg.expectKind {nnkCall,nnkExprColonExpr}
+    pg.expectKind {nnkCall, nnkExprColonExpr}
     case pg[0].strVal:
     of "id":
       pg.expectLen 2
@@ -83,7 +83,18 @@ proc parseFieldIdent(def: NimNode):
     let name = result.name
     def[1].expectKind nnkPragma
     for pg in def[1]:
-      pg.expectKind {nnkCall,nnkExprColonExpr}
+      if pg.kind == nnkIdent:
+        case pg.strVal:
+        of "skipped":
+          result.of_stmt = nnkOfBranch.newTree(
+            newLit casemod result.name.strVal
+          )
+          result.of_stmt.add quote do:
+            raise newException(ValueError, "forbidden attribute")
+        else:
+          error("invalid pragma")
+        continue
+      pg.expectKind {nnkCall, nnkExprColonExpr}
       pg[0].expectKind nnkIdent
       case pg[0].strVal:
       of "check":
