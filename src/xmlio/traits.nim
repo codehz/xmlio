@@ -182,6 +182,8 @@ macro declareXmlElement*(blocks: varargs[untyped]) =
   let verify = newStmtList()
   for check in tmp.checks:
     verify.add check(ident "self")
+  if blocks.len == 2:
+    verify.add blocks[1]
   result.add quote do:
     proc `getChildrenAttribute_id`(self: ref RootObj):
       Option[string] = `children_stmt`
@@ -201,7 +203,6 @@ macro declareXmlElement*(blocks: varargs[untyped]) =
       new result
       result.vtbl = addr `impl_id`
       result.raw = self
-  echo result.repr
 
 macro generateXmlElementHandler*(
   T: typed, xid: static string, verify: untyped
