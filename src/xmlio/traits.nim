@@ -217,7 +217,7 @@ macro declareXmlElement*(blocks: varargs[untyped]) =
 
 macro generateXmlElementHandler*(
   T: typed, xid: static string, verify: untyped
-) =
+) {.deprecated: "use declareXmlElement".} =
   let impl = T.resolveTypeDesc().getTypeImpl()
   impl.expectKind nnkObjectTy
   let list = impl[2]

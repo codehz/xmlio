@@ -3,18 +3,14 @@ import unittest
 import xmlio
 import xmlio/typeid_default
 
-type MyData = object of RootObj
-  value: int
+declareXmlElement:
+  type MyData {.id: "71ea5d8c-32fc-4757-a7a6-cd4245cef13f".} = object of RootObj
+    value: int
 
-type MyRoot = object of RootObj
-  name: string
-  children: seq[ref MyData]
-
-generateXmlElementHandler MyData, "595b110e-50cf-484a-b06e-78291edf4aab":
-  discard
-
-generateXmlElementHandler MyRoot, "827b04b8-0925-4897-9ca0-959601afc8e8":
-  if self.name == "": raise newException(ValueError, "name is empty")
+declareXmlElement:
+  type MyRoot {.id: "175f7482-b642-4440-a61e-04ad5a2789b9".} = object of RootObj
+    name: string
+    children: seq[ref MyData]
 
 var registry = newSimpleRegistry()
 var rootns = newSimpleXmlnsHandler()
