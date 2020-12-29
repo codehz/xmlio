@@ -200,7 +200,9 @@ proc processElement(ctx: var XmlContext, target: ref XmlElementHandler, origname
         raise newException(ValueError, "invalid element attribute: custom attribute in attribute is not allowed")
       if elename.ns != "" and child.resolveNs(elename.ns) != ctx.resolveNs(origname.ns):
         raise newException(ValueError, "invalid element attribute: xmlns mismatched")
-      let attrhandler = target.getAttributeHandler(elename.attr.get())
+      let attrname = elename.attr.get()
+      acquireAttr attrname
+      let attrhandler = target.getAttributeHandler(attrname)
       parser.next()
       child.processElementAttribute(attrhandler)
       if parser.kind != xmlElementEnd: unexpected()

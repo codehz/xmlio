@@ -49,7 +49,17 @@ suite "simple":
     let root = readXml(new SimpleRegistry, xml, ref RootElementHandler)
     check root.name == "test2"
 
+  test "whitespace":
+    const xml = """<root xmlns="test">   <root.name>test3</root.name></root>"""
+    let root = readXml(new SimpleRegistry, xml, ref RootElementHandler)
+    check root.name == "test3"
+
   test "html entity":
     const xml = """<root xmlns="test"><root.name>&lt;script&gt;</root.name></root>"""
     let root = readXml(new SimpleRegistry, xml, ref RootElementHandler)
     check root.name == "<script>"
+
+  test "duplicated key":
+    const xml = """<root xmlns="test" name="123"><root.name>456</root.name></root>"""
+    expect XmlError:
+      discard readXml(new SimpleRegistry, xml, ref RootElementHandler)
