@@ -1,6 +1,6 @@
 # Package
 
-version       = "0.1.7"
+version       = "0.1.8"
 author        = "CodeHz"
 description   = "Nim xml mapper"
 license       = "LGPL-3.0"
