@@ -161,19 +161,19 @@ proc processElement(ctx: var XmlContext, target: ref XmlElementHandler, origname
     acquireAttr k
     target.setAttributeString(k, v)
   var root = ctx.rootContext
+  var whitecache = ""
   template parser(): var XmlParser = root.parser
   template handler(): ref XmlnsRegistry = root.handler
-  template childrenMode(safemode: static bool = false) =
+  template childrenMode() =
     let childrenattr = target.getChildrenAttribute()
     if childrenattr.isNone():
-      when safemode:
-        parser.next()
-      else:
-        raise newException(ValueError, "invalid children element")
+      raise newException(ValueError, "invalid children element")
     else:
       let attr = childrenattr.get()
       acquireAttr attr
       let childhandler = target.getAttributeHandler(attr)
+      if whitecache != "":
+        childhandler.addWhitespace whitecache
       ctx.processElementAttribute(childhandler)
       if parser.kind != xmlElementEnd: unexpected()
       return
@@ -208,7 +208,8 @@ proc processElement(ctx: var XmlContext, target: ref XmlElementHandler, origname
         raise newException(ValueError, "invalid element attribute: end tag not matched")
       parser.next()
     of xmlWhitespace:
-      childrenMode(true)
+      whitecache.add parser.charData
+      parser.next()
     of xmlCharData, xmlSpecial, xmlEntity, xmlCData:
       childrenMode()
     else: unexpected()
