@@ -72,6 +72,12 @@ proc currentElementName(self: var XmlContext): string =
   else:
     ""
 
+proc parentElementName(self: var XmlContext): string =
+  if self.ischild:
+    self.parent[].currentElementName
+  else:
+    ""
+
 proc rootContext(self: var XmlContext): ptr XmlContext =
   var cur = addr self
   if cur[].ischild:
@@ -120,7 +126,8 @@ proc scanAttributes(
       case atn.kind:
       of ak_normal:
         if atn.attached != "":
-          if atn.attached == ctx.currentElementName:
+          decho "attached ", atn.attached, " but ", ctx.parentElementName
+          if atn.attached == ctx.parentElementName:
             if attach != nil:
               attach.setAttribute(atn.name, parser.attrValue)
             else:
