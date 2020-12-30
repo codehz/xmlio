@@ -177,7 +177,6 @@ proc processTypeDef(def: NimNode):
     idinfo: TypeIdent,
     checks: seq[NimNode -> NimNode]] =
   result.typesec = def.copy()
-  result.case_stmt = nnkCaseStmt.newTree(ident "key")
   result.checks = newSeq[NimNode -> NimNode]()
   result.idinfo = parseTypeIdent(def[0])
   result.typesec[0] = def[0][0]
@@ -191,9 +190,14 @@ proc processTypeDef(def: NimNode):
   objt[0].expectKind nnkEmpty
   objt[1].expectKind nnkOfInherit
   let objl = objt[2]
-  objl.expectKind nnkRecList
   result.children = quote do:
     none string
+  if objl.kind == nnkEmpty:
+    result.case_stmt = quote do:
+      raise newException(ValueError, "unknown attribute: " & key)
+    return
+  result.case_stmt = nnkCaseStmt.newTree(ident "key")
+  objl.expectKind nnkRecList
   for idx, item in objl:
     item.expectKind nnkIdentDefs
     let field = parseFieldIdent(item[0])
