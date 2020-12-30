@@ -80,7 +80,7 @@ type SeqHandler*[T] = object of RootObj
 
 forall do (T: typed):
   impl SeqHandler[T], XmlAttributeHandler:
-    method getChildProxy*(self: ref SeqHandler[T]): TypedProxy =
+    method getChildProxy*(self: ref SeqHandler[T]): XmlChild =
       let len = self.proxy[].len
       self.proxy[].setLen(len + 1)
       createProxy addr self.proxy[][len]
@@ -96,7 +96,7 @@ type ProxyHandler* = object of RootObj
   proxy: TypedProxy
 
 impl ProxyHandler, XmlAttributeHandler:
-  method getChildProxy*(self: ref ProxyHandler): TypedProxy =
+  method getChildProxy*(self: ref ProxyHandler): XmlChild =
     if self.used:
       raise newException(ValueError, "already used")
     self.used = true

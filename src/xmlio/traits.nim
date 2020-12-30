@@ -5,8 +5,21 @@ import vtable/utils
 
 import typed_proxy, strmod
 
+trait XmlAttachedAttributeHandler:
+  method setAttribute*(
+    self: ref XmlAttachedAttributeHandler,
+    key: string,
+    value: string)
+
+type XmlChild* = object
+  proxy*: TypedProxy
+  attach*: ref XmlAttachedAttributeHandler
+
+converter toXmlChild*(proxy: TypedProxy): XmlChild =
+  result.proxy = proxy
+
 trait XmlAttributeHandler:
-  method getChildProxy*(self: ref XmlAttributeHandler): TypedProxy =
+  method getChildProxy*(self: ref XmlAttributeHandler): XmlChild =
     raise newException(ValueError, "unsupported")
   method addText*(self: ref XmlAttributeHandler, text: string) =
     raise newException(ValueError, "unsupported")
@@ -41,7 +54,11 @@ trait XmlnsRegistry:
     self: ref XmlnsRegistry, key, value: string
   ) = raise newException(ValueError, "unsupported")
 
-export XmlAttributeHandler, XmlElementHandler, XmlnsHandler, XmlnsRegistry
+export XmlAttachedAttributeHandler
+export XmlAttributeHandler
+export XmlElementHandler
+export XmlnsHandler
+export XmlnsRegistry
 
 type TypeIdent = tuple[tid, name, children: NimNode, exported: bool]
 
