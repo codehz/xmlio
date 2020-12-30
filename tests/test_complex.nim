@@ -45,9 +45,9 @@ impl PrefixRepo, Repository:
   method getName(self: ref PrefixRepo): string = self.prefix & self.child.getName()
   method fetchPackageLists(self: ref PrefixRepo): seq[string] = self.child.fetchPackageLists()
 
-var registry = newSimpleRegistry()
-var rootns = newSimpleXmlnsHandler()
-var customns = newSimpleXmlnsHandler()
+var registry = new SimpleRegistry
+var rootns = new SimpleXmlnsHandler
+var customns = new SimpleXmlnsHandler
 
 rootns.registerType("root", ref RootDocument)
 rootns.registerType("local", ref LocalRepo, ref Repository)

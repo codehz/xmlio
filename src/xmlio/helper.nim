@@ -11,7 +11,7 @@ impl SimpleRegistry, XmlnsRegistry:
   method resolveXmlns*(self: ref SimpleRegistry, name: string): ref XmlnsHandler =
     self.nsmap[name]
 
-proc newSimpleRegistry*(): ref SimpleRegistry =
+proc newSimpleRegistry*(): ref SimpleRegistry {.deprecated: "use new SimpleRegistry directly".} =
   new result
   result[] = SimpleRegistry(nsmap: initTable[string, ref XmlnsHandler]())
 
@@ -32,7 +32,7 @@ impl SimpleXmlnsHandler, XmlnsHandler:
 proc `[]=`*(self: ref SimpleXmlnsHandler, key: (string, TypeId), fn: FactoryFunc) =
   let (name, id) = key
   let subtab = if not (name in self.factory):
-    let tmp = newTable[TypeId, FactoryFunc]()
+    let tmp = new Table[TypeId, FactoryFunc]
     self.factory[name] = tmp
     tmp
   else:
@@ -51,6 +51,6 @@ proc registerType*(self: ref SimpleXmlnsHandler, name: string, desc: typedesc, i
     assign[ifce](proxy, tmp)
     tmp
 
-proc newSimpleXmlnsHandler*(): ref SimpleXmlnsHandler =
+proc newSimpleXmlnsHandler*(): ref SimpleXmlnsHandler {.deprecated: "use new SimpleXmlnsHandler directly".} =
   new result
   result[] = SimpleXmlnsHandler(factory: initTable[string, TableRef[TypeId, FactoryFunc]]())

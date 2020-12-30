@@ -12,8 +12,8 @@ declareXmlElement:
     name: string
     children: seq[ref MyData]
 
-var registry = newSimpleRegistry()
-var rootns = newSimpleXmlnsHandler()
+var registry = new SimpleRegistry
+var rootns = new SimpleXmlnsHandler
 
 rootns.registerType("root", ref MyRoot)
 rootns.registerType("data", ref MyData)
