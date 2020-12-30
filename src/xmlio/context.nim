@@ -228,7 +228,8 @@ proc processElement(
       let startname = parser.elementName & ""
       let elename = parseElementName(startname)
       if elename.attr.isNone(): childrenMode()
-      var child = ctx.newChildContext(origname.name)
+      let attrname = elename.attr.get()
+      var child = ctx.newChildContext(attrname)
       if elename.name != origname.name:
         raise newException(ValueError, "invalid element attribute: element name mismatched")
       let attrs = child.scanAttributes()
@@ -236,7 +237,6 @@ proc processElement(
         raise newException(ValueError, "invalid element attribute: custom attribute in attribute is not allowed")
       if elename.ns != "" and child.resolveNs(elename.ns) != ctx.resolveNs(origname.ns):
         raise newException(ValueError, "invalid element attribute: xmlns mismatched")
-      let attrname = elename.attr.get()
       acquireAttr attrname
       let attrhandler = target.getAttributeHandler(attrname)
       parser.next()

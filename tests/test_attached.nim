@@ -31,12 +31,22 @@ declareXmlElement:
 impl SayTask, Task:
   method execute(self: ref SayTask): string = self.content
 
+declareXmlElement:
+  type TableTask {.id: "604f7189-cfe6-469b-a29d-0f7ea7975b3b".} = object of RootObj
+    table: Table[string, ref Task]
+
+impl TableTask, Task:
+  method execute(self: ref TableTask): string =
+    for key, subtask in self.table:
+      result.add key & ":" & subtask.execute() & ";"
+
 var registry = new SimpleRegistry
 var rootns = new SimpleXmlnsHandler
 
 rootns.registerType("root", ref Document)
 rootns.registerType("hello", ref HelloTask, ref Task)
 rootns.registerType("say", ref SayTask, ref Task)
+rootns.registerType("kv", ref TableTask, ref Task)
 
 registry["std"] = rootns
 
@@ -45,9 +55,15 @@ suite "attached":
     var root = readXml(registry, """<root xmlns="std" />""", ref Document)
     check root.tasks.len == 0
 
-  test "file":
+  test "basic":
     var strs = openFileStream(currentSourcePath / ".." / "attached.xml")
     var root = readXml(registry, strs, "attached.xml", ref Document)
     check root.tasks["hello"].execute() == "hello world"
     check root.tasks["say1"].execute() == "content"
     check root.tasks["say2"].execute() == "content2"
+
+  test "table embed":
+    var strs = openFileStream(currentSourcePath / ".." / "attached_table.xml")
+    var root = readXml(registry, strs, "attached_table.xml", ref Document)
+    check root.tasks["hello"].execute() == "hello world"
+    check root.tasks["kv"].execute() == "test:hello world;"
