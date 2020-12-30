@@ -1,0 +1,6 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<root xmlns="std">
+  <hello root.key="hello" />
+  <say root.key="say1" content="content" />
+  <say root.key="say2">content2</say>
+</root>
