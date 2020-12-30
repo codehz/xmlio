@@ -138,10 +138,7 @@ proc scanAttributes(
     else:
       raise newException(ValueError, "invalid xml node: " & $parser.kind)
 
-proc extract(
-    ctx: var XmlContext,
-    target: TypedProxy,
-    attach: ref XmlAttachedAttributeHandler = nil)
+proc extract(ctx: var XmlContext, target: XmlChild)
 
 proc processElementAttribute(
     ctx: var XmlContext,
@@ -163,7 +160,7 @@ proc processElementAttribute(
       return
     of xmlElementStart, xmlElementOpen:
       let child = target.getChildProxy()
-      ctx.extract(child.proxy, child.attach)
+      ctx.extract(child)
     of xmlCharData, xmlCData:
       target.addText(parser.charData)
       parser.next()
@@ -250,8 +247,7 @@ proc processElement(
 
 proc extract(
     ctx: var XmlContext,
-    target: TypedProxy,
-    attach: ref XmlAttachedAttributeHandler = nil) =
+    target: XmlChild) =
   var root = ctx.rootContext
   template parser(): var XmlParser = root.parser
   template handler(): ref XmlnsRegistry = root.handler
@@ -275,9 +271,9 @@ proc extract(
         raise newException(
           ValueError,
           "unexpected attribute style element: " & parser.elementName)
-      let attrs = child.scanAttributes()
+      let attrs = child.scanAttributes(target.attach)
       let ns = child.resolveNs(elename.ns)
-      let element = ns.createElement(elename.name, target)
+      let element = ns.createElement(elename.name, target.proxy)
       parser.next()
       child.processElement(element, elename, attrs)
     of xmlElementEnd:

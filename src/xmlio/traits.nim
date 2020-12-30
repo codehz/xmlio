@@ -10,13 +10,37 @@ trait XmlAttachedAttributeHandler:
     self: ref XmlAttachedAttributeHandler,
     key: string,
     value: string)
+  method generateProxy(self: ref XmlAttachedAttributeHandler): TypedProxy
+
+type XmlChildKind* {.pure.} = enum
+  xck_proxy
+  xck_attach
 
 type XmlChild* = object
-  proxy*: TypedProxy
-  attach*: ref XmlAttachedAttributeHandler
+  case kind*: XmlChildKind:
+  of xck_proxy:
+    proxy: TypedProxy
+  of xck_attach:
+    attach: ref XmlAttachedAttributeHandler
+
+proc attach*(child: XmlChild): ref XmlAttachedAttributeHandler =
+  if child.kind == xck_attach:
+    return child.attach
+  else:
+    return nil
+
+proc proxy*(child: XmlChild): TypedProxy =
+  case child.kind:
+  of xck_attach:
+    child.attach.generateProxy()
+  of xck_proxy:
+    child.proxy
 
 converter toXmlChild*(proxy: TypedProxy): XmlChild =
-  result.proxy = proxy
+  XmlChild(kind: xck_proxy, proxy: proxy)
+
+converter toXmlChild*(attach: ref XmlAttachedAttributeHandler): XmlChild =
+  XmlChild(kind: xck_attach, attach: attach)
 
 trait XmlAttributeHandler:
   method getChildProxy*(self: ref XmlAttributeHandler): XmlChild =
