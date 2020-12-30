@@ -1,4 +1,4 @@
-import htmlparser, strutils
+import htmlparser, strutils, tables, options
 
 import vtable
 
@@ -71,7 +71,8 @@ forall do (T: typed):
       else:
         discard
 
-proc createAttributeHandlerConcrete*[T: SomeInteger](val: var T): ref SomeIntegerHandler[T] =
+proc createAttributeHandlerConcrete*[T: SomeInteger](val: var T):
+    ref SomeIntegerHandler[T] =
   new result
   result[] = SomeIntegerHandler[T](cache: "", proxy: addr val)
 
@@ -88,6 +89,45 @@ forall do (T: typed):
       discard
 
 proc createAttributeHandlerConcrete*[T: ref](val: var seq[T]): ref SeqHandler[T] =
+  new result
+  result.proxy = addr val
+
+type StringTableHandler*[T] = object of RootObj
+  proxy: ptr Table[string, T]
+
+type StringTableProxy[T] = object of RootObj
+  proxy: ptr Table[string, T]
+  name: Option[string]
+
+forall do (T: typed):
+  impl StringTableProxy[T], XmlAttachedAttributeHandler:
+    method setAttribute(
+      self: ref StringTableProxy[T],
+      key: string,
+      value: string) =
+      if key == "key":
+        if self.name.isSome():
+          raise newException(ValueError, "duplicated attached attribute")
+        if value in self.proxy[]:
+          raise newException(ValueError, "duplicated key")
+        self.name = some value
+      else:
+        raise newException(ValueError, "invalid attached attribute")
+    method generateProxy(self: ref StringTableProxy[T]): TypedProxy =
+      if self.name.isSome():
+        self.proxy[][self.name.get()] = nil
+        createProxy self.proxy[][self.name.get()]
+      else:
+        raise newException(ValueError, "attached attribute key not set")
+  impl StringTableHandler[T], XmlAttributeHandler:
+    method getChildProxy*(self: ref StringTableHandler[T]): XmlChild =
+      let tmp = new StringTableProxy[T]
+      tmp.proxy = self.proxy
+      toXmlAttachedAttributeHandler tmp
+    method verify*(self: ref StringTableHandler[T]) =
+      discard
+
+proc createAttributeHandlerConcrete*[T: ref](val: var Table[string, T]): ref StringTableHandler[T] =
   new result
   result.proxy = addr val
 
