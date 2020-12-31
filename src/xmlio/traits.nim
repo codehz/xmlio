@@ -146,6 +146,11 @@ proc parseFieldIdent(def: NimNode):
           block:
             template value(): untyped = `id`.`name`
             if `checkbody`: raise newException(ValueError, `checkmsg`)
+      of "name":
+        pg.expectLen 2
+        pg[1].expectKind nnkStrLit
+        result.name = pg[1]
+        result.of_stmt[0] = pg[1].copy()
       of "visitor":
         pg.expectLen 2
         result.of_stmt[1][0] = pg[1].copy()
