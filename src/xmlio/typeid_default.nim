@@ -2,6 +2,7 @@
 
 import typeid
 
+bool.registerTypeId "93f8fabe-ae40-487e-a595-de6fc674e944"
 int.registerTypeId "c97540aa-b743-40e3-8b64-7f6acaa63be6"
 uint.registerTypeId "f7ef4455-3904-474f-8945-faa943c82d84"
 int8.registerTypeId "08b28689-36ce-4e13-bd7b-99b34e65738b"

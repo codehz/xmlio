@@ -20,21 +20,35 @@ proc createAttributeHandler*(val: var HasConcrete): ref XmlAttributeHandler =
   toXmlAttributeHandler createAttributeHandlerConcrete val
 
 type StringHandler* = object of RootObj
-  cache: string
-  proxy: TypedProxy
+  proxy: ptr string
 
 impl StringHandler, XmlAttributeHandler:
   method addText*(self: ref StringHandler, text: string) =
-    self.cache.add text
+    self.proxy[].add text
   method addEntity*(self: ref StringHandler, entity: string) =
-    self.cache.add entityToUtf8 entity
+    self.proxy[].add entityToUtf8 entity
   method verify*(self: ref StringHandler) =
-    # empty is valid
-    self.proxy.assign self.cache
+    discard
 
 proc createAttributeHandlerConcrete*(str: var string): ref StringHandler =
   new result
-  result[].proxy = createProxy str
+  result[].proxy = addr str
+
+type BoolHandler* = object of RootObj
+  cache: string
+  proxy: ptr bool
+
+impl BoolHandler, XmlAttributeHandler:
+  method addText*(self: ref BoolHandler, text: string) =
+    self.cache.add text
+  method addEntity*(self: ref BoolHandler, entity: string) =
+    self.cache.add entityToUtf8 entity
+  method verify*(self: ref BoolHandler) {.nimcall.} =
+    self.proxy[] = parseBool(self.cache)
+
+proc createAttributeHandlerConcrete*(val: var bool): ref BoolHandler =
+  new result
+  result[].proxy = addr val
 
 template buildTypedAttributeHandler*(body: untyped) =
   type T {.gensym.} = typeof(body(""))
