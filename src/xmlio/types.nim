@@ -1,4 +1,4 @@
-import htmlparser, strutils, tables, options
+import htmlparser, strutils, tables, options, macros
 
 import vtable
 
@@ -53,19 +53,19 @@ proc createAttributeHandlerConcrete*(val: var bool): ref BoolHandler =
 template buildTypedAttributeHandler*(body: untyped) =
   type T {.gensym.} = typeof(body(""))
   type TypedHandler* {.gensym.} = object of RootObj
-    cache: string
-    proxy: ptr T
+    x_cache: string
+    x_proxy: ptr T
   impl TypedHandler, XmlAttributeHandler:
     method addText*(self: ref TypedHandler, text: string) =
-      self.cache.add text
+      self.x_cache.add text
     method addEntity*(self: ref TypedHandler, entity: string) =
-      self.cache.add entityToUtf8 entity
+      self.x_cache.add entityToUtf8 entity
     method verify*(self: ref TypedHandler) {.nimcall.} =
-      self.proxy[] = body(self.cache)
+      self.x_proxy[] = body(self.x_cache)
 
   proc createAttributeHandlerConcrete*(val: var T): ref TypedHandler =
     new result
-    result[].proxy = addr val
+    result[].x_proxy = addr val
 
 type SomeIntegerHandler*[T] = object of RootObj
   cache: string
