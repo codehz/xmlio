@@ -1,4 +1,4 @@
-import parsexml, streams, options, tables, strscans, critbits
+import std/[parsexml, streams, options, tables, strscans, critbits, strtabs]
 
 import traits, typeid, typed_proxy, debug
 
@@ -15,7 +15,7 @@ type XmlContext = object
     name: string
     root, parent: ptr XmlContext
     defaultns: ref XmlnsHandler
-    nsmap: Table[string, string]
+    nsmap: StringTableRef
 
 type ElementName = object
   ns: string
@@ -91,7 +91,7 @@ proc newChildContext(parent: var XmlContext, name: string): XmlContext =
     name: name,
     root: parent.rootContext,
     parent: addr parent,
-    nsmap: initTable[string, string]()
+    nsmap: newStringTable modeCaseSensitive
   )
 
 proc resolveNs(ctx: var XmlContext, name: string): ref XmlnsHandler =
