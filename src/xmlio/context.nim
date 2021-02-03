@@ -166,8 +166,9 @@ proc processElementAttribute(
       target.verify()
       return
     of xmlElementStart, xmlElementOpen:
-      let child = target.getChildProxy()
+      let child = target.createChildProxy()
       ctx.extract(child)
+      target.addChild()
     of xmlCharData, xmlCData:
       target.addText(parser.charData)
       parser.next()
@@ -283,6 +284,7 @@ proc extract(
       let element = ns.createElement(elename.name, target.proxy)
       parser.next()
       child.processElement(element, elename, attrs)
+      target.finish()
     of xmlElementEnd:
       if processed.isNone(): unexpected()
       if processed.get() != parser.elementName: unexpected()

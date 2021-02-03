@@ -92,13 +92,14 @@ proc createAttributeHandlerConcrete*[T: SomeInteger](val: var T):
 
 type SeqHandler*[T] = object of RootObj
   proxy: ptr seq[T]
+  tmp: T
 
 forall do (T: typed):
   impl SeqHandler[T], XmlAttributeHandler:
-    method getChildProxy*(self: ref SeqHandler[T]): XmlChild =
-      let len = self.proxy[].len
-      self.proxy[].setLen(len + 1)
-      createProxy addr self.proxy[][len]
+    method createChildProxy*(self: ref SeqHandler[T]): XmlChild =
+      createProxy addr self.tmp
+    method addChild*(self: ref SeqHandler[T]) =
+      self.proxy[].add move self.tmp
     method verify*(self: ref SeqHandler[T]) =
       discard
 
@@ -106,12 +107,14 @@ proc createAttributeHandlerConcrete*[T: ref](val: var seq[T]): ref SeqHandler[T]
   new result
   result.proxy = addr val
 
-type StringTableHandler*[T] = object of RootObj
-  proxy: ptr Table[string, T]
-
-type StringTableProxy[T] = object of RootObj
-  proxy: ptr Table[string, T]
-  name: Option[string]
+type
+  StringTableHandler*[T] = object of RootObj
+    proxy: ptr Table[string, T]
+    tmp: ref StringTableProxy[T]
+  StringTableProxy[T] = object of RootObj
+    proxy: ptr Table[string, T]
+    name: Option[string]
+    value: T
 
 forall do (T: typed):
   impl StringTableProxy[T], XmlAttachedAttributeHandler:
@@ -127,17 +130,22 @@ forall do (T: typed):
         self.name = some value
       else:
         raise newException(ValueError, "invalid attached attribute")
-    method generateProxy(self: ref StringTableProxy[T]): TypedProxy =
+    method createProxy(self: ref StringTableProxy[T]): TypedProxy =
       if self.name.isSome():
-        self.proxy[][self.name.get()] = nil
-        createProxy self.proxy[][self.name.get()]
+        createProxy addr self.value
       else:
         raise newException(ValueError, "attached attribute key not set")
+    method finish(self: ref StringTableProxy[T]) =
+      if self.name.isNone():
+        raise newException(ValueError, "attached attribute key not set")
   impl StringTableHandler[T], XmlAttributeHandler:
-    method getChildProxy*(self: ref StringTableHandler[T]): XmlChild =
-      let tmp = new StringTableProxy[T]
-      tmp.proxy = self.proxy
-      toXmlAttachedAttributeHandler tmp
+    method createChildProxy*(self: ref StringTableHandler[T]): XmlChild =
+      self.tmp = new StringTableProxy[T]
+      self.tmp.proxy = self.proxy
+      toXmlAttachedAttributeHandler self.tmp
+    method addChild*(self: ref StringTableHandler[T]) =
+      self.proxy[][self.tmp.name.get()] = self.tmp.value
+      self.tmp = nil
     method verify*(self: ref StringTableHandler[T]) =
       discard
 
@@ -150,11 +158,12 @@ type ProxyHandler* = object of RootObj
   proxy: TypedProxy
 
 impl ProxyHandler, XmlAttributeHandler:
-  method getChildProxy*(self: ref ProxyHandler): XmlChild =
+  method createChildProxy*(self: ref ProxyHandler): XmlChild =
     if self.used:
       raise newException(ValueError, "already used")
-    self.used = true
     return self.proxy
+  method addChild*(self: ref ProxyHandler) =
+    self.used = true
   method verify*(self: ref ProxyHandler) =
     if not self.used:
       raise newException(ValueError, "not used")

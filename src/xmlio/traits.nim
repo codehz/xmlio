@@ -10,7 +10,8 @@ trait XmlAttachedAttributeHandler:
     self: ref XmlAttachedAttributeHandler,
     key: string,
     value: string)
-  method generateProxy(self: ref XmlAttachedAttributeHandler): TypedProxy
+  method createProxy*(self: ref XmlAttachedAttributeHandler): TypedProxy
+  method finish*(self: ref XmlAttachedAttributeHandler)
 
 type XmlChildKind* {.pure.} = enum
   xck_proxy
@@ -32,9 +33,16 @@ proc attach*(child: XmlChild): ref XmlAttachedAttributeHandler =
 proc proxy*(child: XmlChild): TypedProxy =
   case child.kind:
   of xck_attach:
-    child.attach.generateProxy()
+    child.attach.createProxy()
   of xck_proxy:
     child.proxy
+
+proc finish*(child: XmlChild) =
+  case child.kind:
+  of xck_attach:
+    child.attach.finish()
+  else:
+    discard
 
 converter toXmlChild*(proxy: TypedProxy): XmlChild =
   XmlChild(kind: xck_proxy, proxy: proxy)
@@ -43,7 +51,9 @@ converter toXmlChild*(attach: ref XmlAttachedAttributeHandler): XmlChild =
   XmlChild(kind: xck_attach, attach: attach)
 
 trait XmlAttributeHandler:
-  method getChildProxy*(self: ref XmlAttributeHandler): XmlChild =
+  method createChildProxy*(self: ref XmlAttributeHandler): XmlChild =
+    raise newException(ValueError, "unsupported")
+  method addChild*(self: ref XmlAttributeHandler) =
     raise newException(ValueError, "unsupported")
   method addText*(self: ref XmlAttributeHandler, text: string) =
     raise newException(ValueError, "unsupported")
