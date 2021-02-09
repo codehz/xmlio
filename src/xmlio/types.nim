@@ -107,6 +107,23 @@ proc createAttributeHandlerConcrete*[T: ref](val: var seq[T]): ref SeqHandler[T]
   new result
   result.proxy = addr val
 
+type EnumHandler*[T] = object of RootObj
+  proxy: ptr T
+  cache: string
+
+forall do (T: typed):
+  impl EnumHandler[T], XmlAttributeHandler:
+    method addText*(self: ref EnumHandler[T], text: string) =
+      self.cache.add text
+    method addEntity*(self: ref EnumHandler[T], entity: string) =
+      self.cache.add entityToUtf8 entity
+    method verify*(self: ref EnumHandler[T]) =
+      self.proxy[] = parseEnum[T](self.cache)
+
+proc createAttributeHandlerConcrete*[T: enum](val: var T): ref EnumHandler[T] =
+  new result
+  result.proxy = addr val
+
 type
   StringTableHandler*[T] = object of RootObj
     proxy: ptr Table[string, T]
